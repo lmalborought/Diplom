@@ -6,6 +6,8 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import AsyncSession
 from pathlib import Path
 
+from contextlib import asynccontextmanager
+
 from app.database import get_db
 from app.inference import InferenceService
 from app.parser import (
@@ -17,7 +19,14 @@ from app.parser import (
 from app.crud import get_article_by_id, save_article
 from app.schemas import PredictResponse, URLRequest
 
-app = FastAPI(title="Text Classification API")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("Loading model")
+    app.state.inference_service = InferenceService()
+    yield
+
+
+app = FastAPI(title="Text Classification API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -90,10 +99,3 @@ async def predict_url(
 async def root():
     return FileResponse(STATIC_DIR / "index.html")
 
-
-@app.on_event("startup")
-async def startup():
-    inference_service = InferenceService()
-    app.state.inference_service = inference_service
-
-    print("Модель загружена")
