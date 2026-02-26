@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import AsyncSession
 from pathlib import Path
 
-from app.database import Base, engine, get_db
+from app.database import get_db
 from app.inference import InferenceService
 from app.parser import (
     data_cleaning,
