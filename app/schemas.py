@@ -1,10 +1,6 @@
 from pydantic import BaseModel, HttpUrl
 
 
-class TextRequest(BaseModel):
-    text: str
-
-
 class URLRequest(BaseModel):
     url: HttpUrl
 

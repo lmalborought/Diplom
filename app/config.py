@@ -18,8 +18,4 @@ DATABASE_URL = os.getenv(
     f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 )
 
-SECRET_KEY = os.getenv("SECRET_KEY", "default-secret-key")
-DEBUG = os.getenv("DEBUG", "False").lower() == "true"
-
-
 MODEL_PATH = BASE_DIR / "0.8323_best_model_BERT.pt"

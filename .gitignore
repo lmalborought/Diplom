@@ -1,6 +1,7 @@
 # Python
 __pycache__/
 *.pyc
+.env
 env/
 venv/
 .python-version
@@ -9,3 +10,6 @@ venv/
 .idea/
 .vscode/
 .DS_Store
+
+# Модели и веса
+*.pt

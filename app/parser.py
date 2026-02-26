@@ -10,7 +10,6 @@ HEADERS = {
 
 
 async def fetch_page(session, url):
-    """Запрос страницы"""
     try:
         async with session.get(
             url, timeout=aiohttp.ClientTimeout(total=15)

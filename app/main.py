@@ -1,7 +1,7 @@
-from fastapi import FastAPI, Request, Depends
+from fastapi import FastAPI, Request, Depends, HTTPException
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import AsyncSession
 from pathlib import Path
@@ -19,10 +19,15 @@ from app.parser import (
 from app.crud import get_article_by_id, save_article
 from app.schemas import PredictResponse, URLRequest
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("Loading model")
-    app.state.inference_service = InferenceService()
+    try:
+        app.state.inference_service = InferenceService()
+        print("Модель загружена")
+    except Exception as e:
+        print(f"Ошибка загрузки модели: {e}")
+        raise
     yield
 
 
@@ -36,66 +41,104 @@ app.add_middleware(
 )
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
-app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+try:
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+except Exception:
+    print("Папка static не найдена")
 
-
-def get_inference_service(request: Request) -> InferenceService:
-    return request.app.state.inference_service
 
 
 @app.post("/predict/text", response_model=PredictResponse)
 async def predict_text(
     request: Request,
-    inference: InferenceService = Depends(get_inference_service),
 ):
-    body = await request.body()
-    text = body.decode("utf-8", errors="ignore")
-    if text.startswith("\ufeff"):
-        text = text[1:]
-    cleaned_text = data_cleaning(text)
-    predicted = await run_in_threadpool(inference.predict, cleaned_text)
-    return {"predicted_class": predicted}
+    try:
+        inference = request.app.state.inference_service
+        body = await request.body()
+        if not body:
+            return {"predicted_class": "Пустой запрос"}
+        
+        text = body.decode("utf-8", errors="ignore")
+        if text.startswith("\ufeff"):
+            text = text[1:]
+        
+        if not text.strip():
+            return {"predicted_class": "Пустой текст"}
+        
+        cleaned_text = data_cleaning(text)
+        predicted = await run_in_threadpool(inference.predict, cleaned_text)
+        
+        return {"predicted_class": predicted}
+    
+    except Exception:
+        return {"predicted_class": "Ошибка обработки текста"}
 
 
 @app.post("/predict/url", response_model=PredictResponse)
 async def predict_url(
+    request: Request,
     body: URLRequest,
-    db: AsyncSession = Depends(get_db),
-    inference: InferenceService = Depends(get_inference_service),
+    db: AsyncSession = Depends(get_db)
 ):
-    url = str(body.url)
-    article_id = extract_id(url)
+    try:
+        inference = request.app.state.inference_service
+        url = str(body.url)
+    
+        
+        article_id = extract_id(url)
+        if not article_id:
+            return {"predicted_class": "Некорректный URL"}
 
-    if not article_id:
-        return {"predicted_class": "Некорректный URL"}
+        try:
+            existing_article = await get_article_by_id(db, article_id)
+            if existing_article:
+                return {"predicted_class": existing_article.predicted_class}
+        except Exception:
+            pass
 
-    existing_article = await get_article_by_id(db, article_id)
-    if existing_article:
-        return {"predicted_class": existing_article.predicted_class}
+        try:
+            article_data = await parse_article(url)
+            if not article_data or not article_data.get("full_text"):
+                return {"predicted_class": "Не удалось получить текст"}
+        except Exception:
+            return {"predicted_class": "Ошибка парсинга статьи"}
 
-    article_data = await parse_article(url)
-    if not article_data or not article_data["full_text"]:
-        return {"predicted_class": "Не удалось получить текст"}
+        try:
+            final_text = data_prep(
+                article_data["full_text"],
+                article_data.get("topics", []),
+                article_data.get("title", ""),
+            )
+        except Exception:
+            return {"predicted_class": "Ошибка подготовки текста"}
 
-    final_text = data_prep(
-        article_data["full_text"],
-        article_data["topics"],
-        article_data["title"],
-    )
+        try:
+            predicted = await run_in_threadpool(inference.predict, final_text)
+        except Exception:
+            return {"predicted_class": "Ошибка модели"}
 
-    predicted = await run_in_threadpool(inference.predict, final_text)
+        try:
+            await save_article(
+                db=db,
+                url=article_data["url"],
+                article_id=int(article_id),
+                predicted_class=predicted,
+            )
+        except Exception:
+            pass
 
-    await save_article(
-        db=db,
-        url=article_data["url"],
-        article_id=int(article_id),
-        predicted_class=predicted,
-    )
-
-    return {"predicted_class": predicted}
+        return {"predicted_class": predicted}
+    
+    except Exception:
+        return {"predicted_class": "Внутренняя ошибка сервера"}
 
 
 @app.get("/")
 async def root():
-    return FileResponse(STATIC_DIR / "index.html")
-
+    try:
+        return FileResponse(STATIC_DIR / "index.html")
+    except Exception:
+        return JSONResponse(
+            status_code=404,
+            content={"message": "Frontend not found"}
+        )
