@@ -27,6 +27,14 @@ app/
 │   ├── __init__.py
 │   └── article.py       # get_article_by_id, save_article
 └── Dockerfile
+├── frontend/
+│   └── css/
+│       └── style.css     
+│   └── js/
+│       └── script.js
+│   ├── index.html 
+├── 0.8323_best_model_BERT.pt   # Веса модели
+└── requirements.txt
 ```
 
 
