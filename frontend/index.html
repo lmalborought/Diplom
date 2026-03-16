@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Классификация текста</title>
+    <!-- Измените путь с /css/style.css на /static/css/style.css -->
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <h1>Классификация текста</h1>
+    <p>Введите текст или ссылку на статью — модель определит категорию.</p>
+
+    <div class="tabs">
+        <button class="tab active" data-tab="text">Текст</button>
+        <button class="tab" data-tab="url">Ссылка</button>
+    </div>
+
+    <div id="text-panel" class="panel active">
+        <textarea id="text-input" placeholder="Вставьте текст для классификации..."></textarea>
+    </div>
+    <div id="url-panel" class="panel">
+        <input type="url" id="url-input" placeholder="https://example.com/article">
+    </div>
+
+    <button id="submit-btn">Классифицировать</button>
+
+    <div id="result" class="result" style="display: none;">
+        <h3>Результат</h3>
+        <div class="class" id="result-class"></div>
+    </div>
+
+    <!-- Измените путь с /js/script.js на /static/js/script.js -->
+    <script src="/js/script.js"></script>
+</body>
+</html>
