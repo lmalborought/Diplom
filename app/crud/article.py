@@ -1,11 +1,11 @@
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 from sqlalchemy import select
 
 from app.models import Article
 
 
-async def save_article(
-    db: AsyncSession,
+def save_article(
+    db: Session,
     url: str,
     article_id: int,
     predicted_class: str,
@@ -16,11 +16,11 @@ async def save_article(
         predicted_class=predicted_class,
     )
     db.add(article)
-    await db.commit()
-    await db.refresh(article)
+    db.commit()
+    db.refresh(article)
     return article
 
 
-async def get_article_by_id(db: AsyncSession, article_id: int):
-    res = await db.execute(select(Article).where(Article.article_id == article_id))
+def get_article_by_id(db: Session, article_id: int):
+    res = db.execute(select(Article).where(Article.article_id == article_id))
     return res.scalar_one_or_none()

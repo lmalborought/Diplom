@@ -20,6 +20,18 @@ services:
       - "5432:5432"
     restart: unless-stopped
 
+  redis:
+    image: redis:7-alpine
+    container_name: text_classification-redis
+    networks:
+      - net-back
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
   backend:
     build:
       context: .
@@ -28,9 +40,10 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@db:${DB_PORT}/${DB_NAME}
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:${DB_PORT}/${DB_NAME}
       DB_HOST: db
       HF_TOKEN: ${HF_TOKEN}
+      DEBUG: "False"
     networks:
       - net-back
     healthcheck:
@@ -39,29 +52,64 @@ services:
       timeout: 30s
       retries: 5
       start_period: 30s
-    ports:
-      - "8000:8000"
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+
+  celery_worker:
+    build:
+      context: .
+      dockerfile: app/Dockerfile
+    container_name: text_classification-worker
+    command: celery -A app.task worker --loglevel=info --concurrency=2
+    volumes:
+      - hf_cache:/root/.cache/huggingface
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:${DB_PORT}/${DB_NAME}
+      REDIS_URL: redis://redis:6379/0
+      HF_TOKEN: ${HF_TOKEN}
+    networks:
+      - net-back
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     restart: unless-stopped
 
-  frontend:
-    image: nginx:alpine
-    container_name: text_classification-frontend
+  nginx:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: nginx
     ports:
-      - "8081:80"
-    volumes:
-    - ./frontend:/usr/share/nginx/html:ro
+      - "80:80"
     networks:
       - net-back
-      - net-front
     depends_on:
       - backend
     restart: unless-stopped
 
+
+  flower:
+    image: mher/flower
+    container_name: text_classification-flower
+    command: celery --broker=redis://redis:6379/0 flower --port=5555
+    ports:
+      - "5555:5555"
+    networks:
+      - net-back
+    depends_on:
+      - redis
+      - celery_worker
+    restart: unless-stopped
+
 volumes:
   pgdata:
+  hf_cache:
 
 networks:
   net-front:

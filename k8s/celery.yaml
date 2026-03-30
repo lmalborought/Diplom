@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: celery
+  namespace: text-classification
+  labels:
+    app: celery
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: celery
+  template:
+    metadata:
+      labels:
+        app: celery
+    spec:
+      containers:
+      - name: celery
+        image: text-classification:latest
+        imagePullPolicy: IfNotPresent
+        command: ["celery", "-A", "app.task", "worker", "--loglevel=info", "--concurrency=1"]
+        resources:
+          limits:
+            memory: "4Gi" 
+            cpu: "2000m" 
+          requests:
+            memory: "2Gi"  
+            cpu: "1000m" 
+        env:
+        - name: DB_HOST
+          value: "postgres"
+        - name: DB_USER
+          value: "postgres"
+        - name: DB_PASSWORD
+          value: "postgres"
+        - name: DB_NAME
+          value: "app"
+        - name: DB_PORT
+          value: "5432"
+        - name: REDIS_URL
+          value: "redis://redis:6379/0"
+        - name: HF_TOKEN
+          value: "your_huggingface_token"

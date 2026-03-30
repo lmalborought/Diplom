@@ -14,7 +14,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 from app.database import Base
 from app.config import DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME
-from app.models import Article
+from app.models import Article, TaskStatus
 
 # this is the Alembic Config object
 config = context.config

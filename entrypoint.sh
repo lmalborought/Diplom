@@ -1,6 +1,0 @@
-#!/bin/sh
-echo "Running database migrations..."
-alembic upgrade head
-echo "Migrations applied. Starting FastAPI app..."
-# Start your FastAPI application
-exec uvicorn app.main:app --host 0.0.0.0 --port 8000

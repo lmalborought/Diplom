@@ -4,17 +4,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.predict import router
-from app.services import InferenceService
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    print("Loading model")
-    app.state.inference_service = InferenceService()
-    yield
-
-
-app = FastAPI(title="Text Classification API", lifespan=lifespan)
+app = FastAPI(title="Text Classification API")
 
 
 @app.get("/health")
