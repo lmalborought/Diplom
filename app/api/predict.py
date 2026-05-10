@@ -7,6 +7,7 @@ from app.crud import get_article_by_id, save_article
 from app.crud.status import create_task_status, get_task_status
 from app.schemas import URLRequest
 from app.task import process_text_task
+from app.cache import get_from_cached, save_to_cache
 
 router = APIRouter(prefix="/predict")
 
@@ -89,6 +90,16 @@ async def get_task_status_endpoint(
         task_id: str,
         db: Session = Depends(get_db)
 ):
+    cached = get_from_cached(task_id)
+    if cached:
+        return {
+            "task_id": task_id,
+            "status": cached["status"],
+            "result": cached.get("result"),
+            "error": cached.get("error"),
+            "cached": True
+        }
+
     db_status = get_task_status(db, task_id)
 
     if not db_status:
@@ -97,6 +108,9 @@ async def get_task_status_endpoint(
             "status": "not_found",
             "message": "Задача не найдена"
         }
+
+    if db_status.status in ("completed", "failed"):
+        get_from_cached(task_id, db_status.status, db_status.result, db_status.error)
 
     if db_status.status == "completed":
         return {

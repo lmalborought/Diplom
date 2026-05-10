@@ -22,7 +22,7 @@ SECRET_KEY = os.getenv("SECRET_KEY", "default-secret-key")
 DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 
 
-MODEL_PATH = BASE_DIR / "0.8323_best_model_BERT.pt"
+MODEL_PATH = BASE_DIR / "model_weights.pt"
 
 HF_TOKEN = os.getenv("HF_TOKEN")
 if not HF_TOKEN:

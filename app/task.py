@@ -7,14 +7,17 @@ from app.services.inference import InferenceService
 from app.database import SessionLocal
 from app.crud.status import update_task_status
 from app.crud import save_article
+from app.cache import save_to_cache
 
 from celery.signals import worker_process_init
 
+RABBITMQ_URL = os.getenv("RABBITMQ_URL", "amqp://guest:guest@rabbitmq:5672//")
 REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
+
 
 celery_app = Celery(
     'tasks',
-    broker=REDIS_URL,
+    broker=RABBITMQ_URL,
     backend=REDIS_URL,
 )
 
@@ -45,6 +48,7 @@ def process_text_task(self, text: str, article_id: Optional[int] = None, url: Op
     global inference
 
     task_id = self.request.id
+    start_time = time.time()
 
     self.update_state(
         state='PROCESSING',
@@ -67,12 +71,16 @@ def process_text_task(self, text: str, article_id: Optional[int] = None, url: Op
             )
 
         update_task_status(db, task_id, "completed", result=predicted)
+        save_to_cache(task_id, "completed", result=predicted)
 
+        inference_time = time.time() - start_time
+        print(f"[{task_id}] Инференс занял {inference_time:.2f} секунд")
         return {"predicted_class": predicted}
 
     except Exception as ex:
         print(f"Error in task {task_id}: {ex}")
         update_task_status(db, task_id, "failed", error=str(ex))
+        save_to_cache(task_id, "failed", error=str(ex))
         raise
 
     finally:

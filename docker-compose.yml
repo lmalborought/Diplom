@@ -32,6 +32,16 @@ services:
       retries: 5
     restart: unless-stopped
 
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"      # порт для очередей
+      - "15672:15672"    # веб-интерфейс (guest/guest)
+    networks:
+      - net-back
+    restart: unless-stopped
+
   backend:
     build:
       context: .
@@ -70,7 +80,16 @@ services:
     environment:
       DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:${DB_PORT}/${DB_NAME}
       REDIS_URL: redis://redis:6379/0
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672//
       HF_TOKEN: ${HF_TOKEN}
+      NVIDIA_VISIBLE_DEVICES: all
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
     networks:
       - net-back
     depends_on:
@@ -78,6 +97,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      rabbitmq:
+        condition: service_started
     restart: unless-stopped
 
   nginx:
@@ -89,21 +110,21 @@ services:
       - "80:80"
     networks:
       - net-back
+      - net-front
     depends_on:
       - backend
     restart: unless-stopped
 
-
   flower:
     image: mher/flower
     container_name: text_classification-flower
-    command: celery --broker=redis://redis:6379/0 flower --port=5555
+    command: celery --broker=amqp://guest:guest@rabbitmq:5672// flower --port=5555
     ports:
       - "5555:5555"
     networks:
       - net-back
     depends_on:
-      - redis
+      - rabbitmq
       - celery_worker
     restart: unless-stopped
 
@@ -112,6 +133,5 @@ volumes:
   hf_cache:
 
 networks:
-  net-front:
-
   net-back:
+  net-front:

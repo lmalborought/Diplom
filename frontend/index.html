@@ -4,29 +4,88 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Классификация текста</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-    <h1>Классификация текста</h1>
-    <p>Введите текст или ссылку на статью — модель определит категорию.</p>
+    <div class="bg-aurora" aria-hidden="true"></div>
 
-    <div class="tabs">
-        <button class="tab active" data-tab="text">Текст</button>
-        <button class="tab" data-tab="url">Ссылка</button>
-    </div>
+    <div class="page">
+        <header class="hero">
+            <p class="eyebrow"><span class="eyebrow-dot" aria-hidden="true"></span>NLP · категоризация</p>
+            <h1><span class="title-gradient">Классификация текста</span></h1>
+            <p class="lede">
+                Вставьте фрагмент текста или ссылку на статью — сервис определит тематический класс.
+                Длинные запросы могут обрабатываться в фоне: ниже видно ход задачи.
+            </p>
+        </header>
 
-    <div id="text-panel" class="panel active">
-        <textarea id="text-input" placeholder="Вставьте текст для классификации..."></textarea>
-    </div>
-    <div id="url-panel" class="panel">
-        <input type="url" id="url-input" placeholder="https://example.com/article">
-    </div>
+        <main class="shell" aria-labelledby="form-title">
+            <section class="card editor-card">
+                <div class="card-head">
+                    <div>
+                        <h2 id="form-title" class="card-title">Источник данных</h2>
+                        <p class="card-sub">В режиме «Текст» нужно <strong>не меньше 100 слов</strong>. Отправка: <kbd>Enter</kbd> (в поле текста новая строка — <kbd>Shift</kbd>+<kbd>Enter</kbd>), также <kbd>Ctrl</kbd>+<kbd>Enter</kbd>.</p>
+                    </div>
+                </div>
 
-    <button id="submit-btn">Классифицировать</button>
+                <div class="tabs" role="tablist" aria-label="Режим ввода">
+                    <button class="tab active" type="button" role="tab" aria-selected="true" aria-controls="text-panel" id="tab-text" data-tab="text">Текст</button>
+                    <button class="tab" type="button" role="tab" aria-selected="false" aria-controls="url-panel" id="tab-url" data-tab="url">Ссылка</button>
+                </div>
 
-    <div id="result" class="result" style="display: none;">
-        <h3>Предсказанный класс</h3>
-        <div class="class" id="result-class"></div>
+                <div id="text-panel" class="panel active" role="tabpanel" aria-labelledby="tab-text">
+                    <label class="field-label" for="text-input">Текст для классификации</label>
+                    <textarea id="text-input" placeholder="Вставьте текст не короче 100 слов (статья, несколько абзацев). Enter — отправить, Shift+Enter — перенос строки." rows="10" spellcheck="true"></textarea>
+                    <div class="word-progress" aria-hidden="true" title="Прогресс по минимуму слов">
+                        <div id="word-bar-fill" class="word-progress-fill"></div>
+                    </div>
+                    <div class="field-meta">
+                        <span id="char-hint" class="hint">Нужно не менее 100 слов по пробелам между фрагментами.</span>
+                        <span class="counts" aria-live="polite"><span id="word-count" class="count">0 слов</span><span class="count-sep" aria-hidden="true">·</span><span id="char-count" class="count count-dim">0 симв.</span></span>
+                    </div>
+                </div>
+
+                <div id="url-panel" class="panel" role="tabpanel" aria-labelledby="tab-url">
+                    <label class="field-label" for="url-input">URL материала</label>
+                    <input type="url" id="url-input" inputmode="url" autocomplete="url" placeholder="https://habr.com/ru/post/...">
+                    <p class="field-foot">Если статья уже была в базе, ответ придёт сразу без очереди.</p>
+                </div>
+
+                <div class="actions">
+                    <button id="submit-btn" class="btn-primary" type="button">
+                        <span class="btn-spinner" aria-hidden="true"></span>
+                        <span class="btn-label">Классифицировать</span>
+                    </button>
+                    <button id="clear-btn" class="btn-ghost" type="button">Очистить</button>
+                </div>
+            </section>
+
+            <section id="result" class="card result-card" style="display: none;" aria-live="polite">
+                <div class="result-head">
+                    <h2 class="card-title">Результат</h2>
+                    <span id="result-badge" class="pill pill-muted">ожидание</span>
+                </div>
+
+                <div id="task-track" class="task-track" style="display: none;">
+                    <div class="track-title">Статус обработки</div>
+                    <ol class="steps" aria-label="Этапы задачи">
+                        <li class="step" data-step="pending"><span class="dot"></span><span>В очереди</span></li>
+                        <li class="step" data-step="processing"><span class="dot"></span><span>Обработка</span></li>
+                        <li class="step" data-step="done"><span class="dot"></span><span>Готово</span></li>
+                    </ol>
+                    <p id="task-hint" class="task-hint muted"></p>
+                </div>
+
+                <div id="result-body" class="result-body">
+                    <p id="result-label" class="result-label muted">Предсказанный класс</p>
+                    <div class="result-value" id="result-class"></div>
+                    <p id="result-extra" class="result-extra muted" style="display: none;"></p>
+                </div>
+            </section>
+        </main>
     </div>
 
     <script src="/js/script.js"></script>
