@@ -12,6 +12,8 @@
 - Nginx — статика и reverse proxy
 - Docker — контейнеризация
 
+![](images/scheme.png)
+
 ## Технологии
 
 - **Backend:** FastAPI 
@@ -136,5 +138,3 @@ text-classification/
 ```
 
 
-## Архитектура
-![](images/scheme.png)
