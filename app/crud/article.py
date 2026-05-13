@@ -4,12 +4,7 @@ from sqlalchemy import select
 from app.models import Article
 
 
-def save_article(
-    db: Session,
-    url: str,
-    article_id: int,
-    predicted_class: str,
-):
+def save_article(db: Session, url: str, article_id: int, predicted_class: str):
     article = Article(
         url=url,
         article_id=article_id,

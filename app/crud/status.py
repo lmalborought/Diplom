@@ -4,12 +4,7 @@ from datetime import datetime
 from app.models.status import TaskStatus
 
 
-def create_task_status(
-        db: Session,
-        task_id: str,
-        article_id: int = None,
-        url: str = None
-) -> TaskStatus:
+def create_task_status(db: Session, task_id: str, article_id: int = None, url: str = None) -> TaskStatus:
     task_status = TaskStatus(
         task_id=task_id,
         status="pending",
@@ -22,13 +17,7 @@ def create_task_status(
     return task_status
 
 
-def update_task_status(
-        db: Session,
-        task_id: str,
-        status: str,
-        result: str = None,
-        error: str = None
-) -> None:
+def update_task_status(db: Session, task_id: str, status: str, result: str = None, error: str = None) -> None:
     updates = {"status": status, "updated_at": datetime.utcnow()}
 
     if status == "processing":
@@ -48,10 +37,7 @@ def update_task_status(
     db.commit()
 
 
-def get_task_status(
-        db: Session,
-        task_id: str
-) -> TaskStatus | None:
+def get_task_status(db: Session, task_id: str) -> TaskStatus | None:
     result = db.execute(
         select(TaskStatus).where(TaskStatus.task_id == task_id)
     )

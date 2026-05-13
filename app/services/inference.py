@@ -7,17 +7,22 @@ from app.config import MODEL_PATH, HF_TOKEN
 class InferenceService:
     def __init__(self):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.tokenizer = AutoTokenizer.from_pretrained("DeepPavlov/rubert-base-cased",
+
+        if torch.cuda.is_available():
+            print(f"✅ GPU доступен! Используется: {torch.cuda.get_device_name(0)}")
+        else:
+            print("❌ GPU НЕ доступен, работаем на CPU")
+
+        self.tokenizer = AutoTokenizer.from_pretrained("deepvk/RuModernBERT-base",
             token=HF_TOKEN)
         self.model = AutoModelForSequenceClassification.from_pretrained(
-            "DeepPavlov/rubert-base-cased",
+            "deepvk/RuModernBERT-base",
             token=HF_TOKEN,
             num_labels=10,
-        )
+        ).to(self.device)
 
         state_dict = torch.load(str(MODEL_PATH), map_location=self.device)
         self.model.load_state_dict(state_dict)
-        self.model.to(self.device)
         self.model.eval()
 
         self.labels = [
@@ -38,7 +43,7 @@ class InferenceService:
             text,
             truncation=True,
             padding=True,
-            max_length=512,
+            max_length=384,
             return_tensors="pt",
         ).to(self.device)
 

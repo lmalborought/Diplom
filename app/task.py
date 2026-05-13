@@ -48,11 +48,12 @@ def process_text_task(self, text: str, article_id: Optional[int] = None, url: Op
     global inference
 
     task_id = self.request.id
-    start_time = time.time()
+    total_start = time.time()
+
 
     self.update_state(
         state='PROCESSING',
-        meta={'text': text[:100], 'task_id': task_id, 'article_id': article_id}
+        meta={'text': text[:50], 'task_id': task_id, 'article_id': article_id}
     )
 
     db = SessionLocal()
@@ -60,7 +61,10 @@ def process_text_task(self, text: str, article_id: Optional[int] = None, url: Op
     try:
         update_task_status(db, task_id, "processing")
 
+        start_inference = time.time()
         predicted = inference.predict(text)
+        inference_time = time.time() - start_inference
+        print(f"[{task_id}] Инференс модели: {inference_time:.4f} сек")
 
         if article_id and url:
             save_article(
@@ -73,8 +77,8 @@ def process_text_task(self, text: str, article_id: Optional[int] = None, url: Op
         update_task_status(db, task_id, "completed", result=predicted)
         save_to_cache(task_id, "completed", result=predicted)
 
-        inference_time = time.time() - start_time
-        print(f"[{task_id}] Инференс занял {inference_time:.2f} секунд")
+        total_time = time.time() - total_start
+        print(f"[{task_id}] Общее время воркера: {total_time:.4f} сек")
         return {"predicted_class": predicted}
 
     except Exception as ex:

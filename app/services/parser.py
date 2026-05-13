@@ -9,8 +9,7 @@ HEADERS = {
 }
 
 
-async def fetch_page(session, url):
-    """Запрос страницы"""
+async def get_page(session: aiohttp.ClientSession, url: str) -> str | None:
     try:
         async with session.get(
             url, timeout=aiohttp.ClientTimeout(total=15)
@@ -24,7 +23,7 @@ async def fetch_page(session, url):
 async def parse_article(url: str):
     async with aiohttp.ClientSession(headers=HEADERS) as session:
         try:
-            html = await fetch_page(session, url)
+            html = await get_page(session, url)
             if not html:
                 return None
 
@@ -42,27 +41,11 @@ async def parse_article(url: str):
             text_tag = soup.find("div", class_="article-body")
             text = text_tag.get_text(" ", strip=True) if text_tag else ""
 
-            links = []
-            for a in soup.select("article a[href]"):
-                href = a.get("href", "")
-                if href.startswith("http"):
-                    links.append(href)
-
-            images = []
-            for figure in soup.find_all("figure")[:5]:
-                img_tag = figure.find("img")
-                if img_tag:
-                    src = img_tag.get("src")
-                    if src:
-                        images.append(src)
-
             return {
                 "url": url,
                 "title": title,
                 "topics": topics,
                 "full_text": text,
-                "links": links,
-                "images": images,
             }
         except Exception as e:
             print(f"Ошибка парсинга статьи {url}: {e}")
@@ -86,7 +69,11 @@ def data_cleaning(text: str) -> str:
     return text
 
 
-def data_prep(text: str, topics: list, title: str) -> str:
+def data_prep(text: str, topics: list = None, title: str = "") -> str:
     text = data_cleaning(text)
-    topics_str = "".join(topics)
+    if topics:
+        cleaned_topics = [topic.replace(" ", "") for topic in topics]
+        topics_str = " ".join(cleaned_topics)
+    else:
+        topics_str = ""
     return f"{title} [SEP] {topics_str} [SEP] {text}"

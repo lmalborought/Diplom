@@ -3,30 +3,29 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.services import data_cleaning, data_prep, extract_id, parse_article
-from app.crud import get_article_by_id, save_article
+from app.crud import get_article_by_id
 from app.crud.status import create_task_status, get_task_status
 from app.schemas import URLRequest
 from app.task import process_text_task
 from app.cache import get_from_cached, save_to_cache
+import time
 
 router = APIRouter(prefix="/predict")
 
 
 @router.post("/text")
-async def predict_text(
-        request: Request,
-        text: str = Body(None, media_type="text/plain"),
-        db: Session = Depends(get_db)
-):
+async def predict_text(request: Request, text: str = Body(None, media_type="text/plain"),
+                       db: Session = Depends(get_db)):
+    start_total = time.time()
+
     if text:
-        # Если пришел JSON с полем text
-        cleaned_text = data_cleaning(text)
+        cleaned_text = data_prep(text)
     else:
         body = await request.body()
         text = body.decode("utf-8", errors="ignore")
         if text.startswith("\ufeff"):
             text = text[1:]
-        cleaned_text = data_cleaning(text)
+        cleaned_text = data_prep(text)
 
     task = process_text_task.delay(cleaned_text, None, None)
 
@@ -37,6 +36,9 @@ async def predict_text(
         url=None
     )
 
+    total_time = time.time() - start_total
+    print(f"Полное время API: {total_time:.4f} сек")
+
     return {
         "task_id": task.id,
         "status": "pending",
@@ -45,10 +47,9 @@ async def predict_text(
 
 
 @router.post("/url")
-async def predict_url(
-        body: URLRequest,
-        db: Session = Depends(get_db)
-):
+async def predict_url(body: URLRequest, db: Session = Depends(get_db)):
+    start_total = time.time()
+
     url = str(body.url)
     article_id = extract_id(url)
 
@@ -60,6 +61,7 @@ async def predict_url(
         return {"predicted_class": existing_article.predicted_class}
 
     article_data = await parse_article(url)
+
     if not article_data or not article_data["full_text"]:
         return {"predicted_class": "Не удалось получить текст"}
 
@@ -78,6 +80,9 @@ async def predict_url(
         url=url
     )
 
+    total_time = time.time() - start_total
+    print(f"Полное время API: {total_time:.4f} сек")
+
     return {
         "task_id": task.id,
         "status": "pending",
@@ -86,18 +91,16 @@ async def predict_url(
 
 
 @router.get("/task/{task_id}")
-async def get_task_status_endpoint(
-        task_id: str,
-        db: Session = Depends(get_db)
-):
+async def get_task_status_endpoint(task_id: str, db: Session = Depends(get_db)):
+
     cached = get_from_cached(task_id)
+
     if cached:
         return {
             "task_id": task_id,
             "status": cached["status"],
             "result": cached.get("result"),
             "error": cached.get("error"),
-            "cached": True
         }
 
     db_status = get_task_status(db, task_id)
@@ -110,7 +113,7 @@ async def get_task_status_endpoint(
         }
 
     if db_status.status in ("completed", "failed"):
-        get_from_cached(task_id, db_status.status, db_status.result, db_status.error)
+        save_to_cache(task_id, db_status.status, db_status.result, db_status.error)
 
     if db_status.status == "completed":
         return {
