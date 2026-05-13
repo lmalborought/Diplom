@@ -86,9 +86,11 @@ docker-compose up -d --build
 ## Структура проекта
 
 ```
-text-classification/                       
+Diplom/
 │
-├── docker-compose.yml
+├── docker-compose.yml                #базовый конфиг для запуска всех сервисов (CPU)
+├── docker-compose-gpu.yml            #расширение для запуска с поддержкой GPU
+├── alembic.ini
 ├── requirements.txt
 │
 ├── alembic/                          # Миграции БД
@@ -99,42 +101,52 @@ text-classification/
 │       ├── b51aac07fd4f_add_task_statuses_table.py
 │       └── f0b90ecb49e3_create_articles_table.py
 │
-├── app/                              # Основная папка бэкенда
-├── main.py                 # Точка входа приложения: создание FastAPI/роуты/подключение всего
-├── config.py               # Конфигурация (переменные окружения, настройки приложения/БД и т.п.)
-├── database.py             # Подключение к БД: engine/session, базовые настройки ORM
-├── task.py                 # Фоновые задачи/очереди (Celery)
-├── Dockerfile              # Сборка Docker-образа бэкенда
+├── app/                              # Бэкенд (FastAPI, Celery)
+│   ├── main.py                       # Точка входа: FastAPI, роуты, подключение зависимостей
+│   ├── config.py                     # Конфигурация (env, приложение, БД)
+│   ├── database.py                   # Подключение к БД: engine/session, ORM
+│   ├── task.py                       # Фоновые задачи (Celery)
+│   ├── cache.py                      # Работа с Redis-кэшем
+│   ├── Dockerfile                    # Образ бэкенда
+│   │
+│   ├── api/                          # HTTP API (роуты)
+│   │   ├── __init__.py
+│   │   └── predict.py                # Эндпоинты предсказания / инференса
+│   │
+│   ├── models/                       # ORM-модели
+│   │   ├── __init__.py
+│   │   ├── article.py                # Модель Article
+│   │   └── status.py                 # Модель Status
+│   │
+│   ├── schemas/                      # Pydantic-схемы
+│   │   ├── __init__.py
+│   │   └── predict.py                # Схемы запросов/ответов для predict
+│   │
+│   ├── services/                     # Бизнес-логика (вне HTTP)
+│   │   ├── __init__.py
+│   │   ├── inference.py              # Инференс модели
+│   │   └── parser.py                 # Парсинг и подготовка текстов/статей
+│   │
+│   └── crud/                         # CRUD по сущностям
+│       ├── __init__.py
+│       ├── article.py
+│       └── status.py
 │
-├── api/                    # HTTP API-слой (роуты/эндпоинты)
-│   ├── __init__.py         # Инициализация пакета
-│   └── predict.py          # Эндпоинты для предсказания/инференса
+├── frontend/                         # Статический фронтенд
+│   ├── Dockerfile
+│   ├── index.html
+│   ├── css/
+│   │   └── style.css
+│   └── js/
+│       └── script.js
 │
-├── models/                 # ORM-модели таблиц БД
-│   ├── __init__.py
-│   ├── article.py          # Модель Article (статьи)
-│   └── status.py           # Модель Status (статусы задач/обработки)
+├── nginx/                            # Конфиг Nginx (reverse proxy, статика)
+│   └── default.conf
 │
-├── schemas/                # Pydantic-схемы (валидация/формат запросов и ответов)
-│   ├── __init__.py
-│   └── predict.py          # Схемы для predict: request/response
-│
-├── services/               # Бизнес-логика (не завязана на HTTP)
-│   ├── __init__.py
-│   ├── inference.py        # Инференс модели/предсказания
-│   └── parser.py           # Парсинг/подготовка данных (например текстов/статей)
-│
-└── crud/                   # Доступ к данным (CRUD-операции по сущностям)
-  ├── __init__.py
-  ├── article.py          # CRUD для Article
-  └── status.py           # CRUD для Status                        
-└── frontend/
-  ├── Dockerfile
-  ├── index.html
-  ├── css/
-  │   └── style.css
-  └── js/
-      └── script.js                              
+└── notebooks/                        # Jupyter-ноутбуки (эксперименты)
+    ├── README.md
+    ├── keywords.ipynb
+    └── speed.ipynb
 ```
 
 
